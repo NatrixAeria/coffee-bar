@@ -3,7 +3,9 @@ name = "coffee-bar"
 version = "0.1.0"
 authors = ["natrixaeria <upezu@student.kit.edu>"]
 edition = "2018"
+description = "A modular i3-bar written in rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+xcb = "0.9"

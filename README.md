@@ -1,10 +1,12 @@
 # coffee-bar
 A modular tool-bar mainly for i3 written in rust
 
-```dif
+```diff
 - This project is WIP
 - (Work In Progress)
 ```
+
+---
 
 ## Setup
 
@@ -16,11 +18,11 @@ $ cargo build --release
 The binary is at `target/release/coffee-bar`.
 
 ## Usage
-([ToDo] Usage)
+> ([_ToDo_] Usage)
 
 Not usable nor stable yet
 
 ## Implementation Details
-([ToDo] Implementation Details)
+> ([_ToDo_] Implementation Details)
 
-[WIP]
+> [_WIP_]

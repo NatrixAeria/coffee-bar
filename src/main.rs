@@ -10,11 +10,14 @@ fn main() -> Result<(), String> {
     let mut dis = window::xwindow::Display::new()
                     .map_err(|e| format!("{}", e))?;
 
+    let size = dis.get_screen_dimension(dis.get_main_screen())
+                    .ok_or_else(|| String::from("No screen available"))?;
+
     let win: window::xwindow::Window<_> =
             dis.new_window_builder()
                  .title(String::from("coffee bar"))
                  .pos(0, 0)
-                 .size(1920, 20)
+                 .size(size.0, 20)
                  .build()
                .map_err(|e| format!("{}", e))?;
 

@@ -14,6 +14,10 @@ pub trait Display {
             where Self: Sized {
         WindowBuilder::new(self)
     }
+
+    fn get_screen_count(&self) -> usize;
+    fn get_screen_dimension(&self, n: usize) -> Option<(u64, u64)>;
+    fn get_main_screen(&self) -> usize;
 }
 
 /// Constructor for building a window

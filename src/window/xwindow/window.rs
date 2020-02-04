@@ -1,5 +1,5 @@
 use super::XError;
-use super::super::{Display, WindowBuilder};
+use super::super::{Display, WindowBuilder, event::Event};
 use super::Display as XDisplay;
 
 pub struct Window<'a> {
@@ -22,6 +22,16 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
         let screen = dis.get_screen(screen_id)
                         .ok_or(XError::ScreenError(
                                 String::from("could not find requested screen")))?;
+        let mut visual = None;
+        let mut depth_val = xcb::COPY_FROM_PARENT as u8;
+        let mut cw_values = vec![];
+
+        let foreground_gc = con.generate_id();
+        xcb::create_gc(con, foreground_gc, screen.root(), &[
+            (xcb::GC_FOREGROUND, screen.black_pixel()),
+            (xcb::GC_GRAPHICS_EXPOSURES, 0),
+        ]);
+
         if transparency {
             if let Some((depth, vis)) = dis.get_depth(
                                 screen_id, 32, xcb::VISUAL_CLASS_TRUE_COLOR as u8) {
@@ -37,22 +47,47 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
                          // Id of the visual supported by the screen
                          vis.visual_id()
                 ).request_check()?;
+                visual = Some(vis.visual_id());
+                cw_values.push((xcb::CW_COLORMAP, colormap));
+                cw_values.push((xcb::CW_BORDER_PIXEL, screen.black_pixel()));
+                depth_val = depth.depth();
             }
         }
+        // Defines how the window should be repositioned if the parent is resized
+        cw_values.push((xcb::CW_WIN_GRAVITY, xcb::GRAVITY_NORTH));
+        cw_values.push((xcb::CW_BACK_PIXEL, screen.black_pixel()));
+        cw_values.push((xcb::CW_EVENT_MASK,
+             xcb::EVENT_MASK_EXPOSURE | xcb::EVENT_MASK_KEY_PRESS));
         xcb::create_window(con,
-                xcb::COPY_FROM_PARENT as u8,
+                depth_val,
                 win,
                 screen.root(),
                 pos.0, pos.1, size.0, size.1,
-                0,  // border width ( =? )
+                0,  // border width
                 xcb::xproto::WINDOW_CLASS_INPUT_OUTPUT as u16,
-                screen.root_visual(), &[
-                    // Defines how the window should be repositioned if the parent is resized
-                    (xcb::CW_WIN_GRAVITY, xcb::GRAVITY_NORTH),
-                ]
+                visual.unwrap_or_else(|| screen.root_visual()),
+                &cw_values
         ).request_check()?;
+        xcb::map_window(con, win).request_check()?;
+        con.flush();
+
         Ok(Self {
             dis,
+        })
+    }
+}
+
+impl<'a> Iterator for Window<'a> {
+    type Item = Event;
+    fn next(&mut self) -> Option<Self::Item> {
+        let con = self.dis.con();
+        con.wait_for_event().and_then(|event| {
+            let r = event.response_type() & !0x80;
+            match r {
+                xcb::EXPOSE => Some(Event::Redraw),
+                xcb::KEY_PRESS => Some(Event::KeyDown),
+                _ => None,
+            }
         })
     }
 }

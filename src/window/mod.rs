@@ -1,6 +1,7 @@
 //! Tools for managing windows platform independently
 
 pub mod xwindow;
+pub mod event;
 
 pub trait Display {
     /// Platform specific display error type
@@ -97,7 +98,7 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
 }
 
 /// A trait for windows of a specific platform
-pub trait Window<'a, D: Display> {
+pub trait Window<'a, D: Display>: Iterator<Item=event::Event> {
     /// Platform specific window error type
     type Error: std::error::Error;
     /// Tries to create a new window. Use `WindowBuilder::build` instead

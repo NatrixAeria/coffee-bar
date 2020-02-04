@@ -17,10 +17,14 @@ fn main() -> Result<(), String> {
             dis.new_window_builder()
                  .title(String::from("coffee bar"))
                  .pos(0, 0)
-                 .size(size.0, 20)
+                 .size(size.0, 200)
                  .transparency(true)
                  .build()
                .map_err(|e| format!("{}", e))?;
+
+    for event in win {
+        println!("event: {:?}", event);
+    }
 
     Ok(())
 }

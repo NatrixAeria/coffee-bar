@@ -1,5 +1,5 @@
 use super::XError;
-use super::super::{Display, WindowBuilder, event::Event};
+use super::super::{Display, WindowBuilder, event::Event, WindowType};
 use super::Display as XDisplay;
 
 pub struct Window<'a> {
@@ -14,6 +14,7 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
         let pos = (wb.get_x().unwrap_or(  0) as i16, wb.get_y().unwrap_or(  0) as i16);
         let size = (wb.get_w().unwrap_or(100) as u16, wb.get_h().unwrap_or(100) as u16);
         let screen_id = wb.get_screen();
+        let window_type = wb.get_window_type();
         let dis = wb.get_display();
 
         let con = dis.con();
@@ -68,6 +69,26 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
                 visual.unwrap_or_else(|| screen.root_visual()),
                 &cw_values
         ).request_check()?;
+
+        match window_type {
+            WindowType::Normal => (),
+            WindowType::Docking => {
+                let window_type = dis.get_intern_atom("_NET_WM_WINDOW_TYPE").unwrap().unwrap();
+                let docking = dis.get_intern_atom("_NET_WM_WINDOW_TYPE_DOCK").unwrap().unwrap();
+                xcb::change_property(
+                    con,
+                    xcb::PROP_MODE_REPLACE as u8,
+                    win,
+                    window_type,
+                    xcb::ATOM as u32,
+                    // Specifies whether the data should be viewed as a
+                    // list of 8-bit, 16-bit, or 32-bit quantities
+                    32,
+                    &[docking]
+                ).request_check()?;
+            }
+        }
+
         xcb::map_window(con, win).request_check()?;
         con.flush();
 

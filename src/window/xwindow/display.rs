@@ -23,6 +23,13 @@ impl Display {
         )
     }
 
+    pub fn get_intern_atom(&self, name: &str) -> Result<Option<xcb::Atom>, XError> {
+        match xcb::intern_atom(&self.con, true, name).get_reply()?.atom() {
+            xcb::ATOM_NONE => Ok(None),
+            atom => Ok(Some(atom))
+        }
+    }
+
     pub fn con(&self) -> &xcb::Connection {
         &self.con
     }

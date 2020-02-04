@@ -2,7 +2,7 @@
 
 pub mod window;
 
-use window::Display;
+use window::{Display, WindowType};
 
 /// Runs a new coffee-bar instance
 fn main() -> Result<(), String> {
@@ -17,8 +17,9 @@ fn main() -> Result<(), String> {
             dis.new_window_builder()
                  .title(String::from("coffee bar"))
                  .pos(0, 0)
-                 .size(size.0, 200)
+                 .size(size.0, 40)
                  .transparency(true)
+                 .window_type(WindowType::Docking)
                  .build()
                .map_err(|e| format!("{}", e))?;
 

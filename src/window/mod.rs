@@ -3,6 +3,12 @@
 pub mod xwindow;
 pub mod event;
 
+#[derive(Clone, Copy)]
+pub enum WindowType {
+    Normal,
+    Docking,
+}
+
 pub trait Display {
     /// Platform specific display error type
     type Error: std::error::Error;
@@ -29,6 +35,7 @@ pub struct WindowBuilder<'a, D: Display> {
     size: (Option<u64>, Option<u64>),
     screen: Option<usize>,
     transparency: bool,
+    window_type: WindowType,
 }
 
 impl<'a, D: Display> WindowBuilder<'a, D> {
@@ -40,6 +47,7 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
             size: (None, None),
             screen: None,
             transparency: false,
+            window_type: WindowType::Normal,
         }
     }
 
@@ -61,6 +69,8 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
     pub fn h(mut self, h: u64) -> Self { self.size.1 = Some(h); self }
     /// Sets the screen id
     pub fn screen(mut self, screen: usize) -> Self { self.screen = Some(screen); self }
+    /// Sets the window type
+    pub fn window_type(mut self, wt: WindowType) -> Self { self.window_type = wt; self }
 
     /// Set transparency support
     pub fn transparency(mut self, b: bool) -> Self { self.transparency = b; self }
@@ -83,6 +93,8 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
     pub fn get_h(&self) -> Option<u64> { self.size.1 }
     /// Gets the screen id
     pub fn get_screen(&self) -> Option<usize> { self.screen }
+    /// Gets the window type
+    pub fn get_window_type(&self) -> WindowType { self.window_type }
     
     /// Get transparency support
     pub fn get_transparency(&self) -> bool { self.transparency }

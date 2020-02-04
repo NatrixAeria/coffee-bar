@@ -10,7 +10,7 @@ pub trait Display {
         where Self: Sized;
 
     /// Creates a new Window Builder
-    fn new_window_builder<'a>(&'a mut self) -> WindowBuilder<'a, Self>
+    fn new_window_builder<'a>(&'a self) -> WindowBuilder<'a, Self>
             where Self: Sized {
         WindowBuilder::new(self)
     }
@@ -22,19 +22,23 @@ pub trait Display {
 
 /// Constructor for building a window
 pub struct WindowBuilder<'a, D: Display> {
-    dis: &'a mut D,
+    dis: &'a D,
     title: Option<String>,
     pos: (Option<i64>, Option<i64>),
     size: (Option<u64>, Option<u64>),
+    screen: Option<usize>,
+    transparency: bool,
 }
 
 impl<'a, D: Display> WindowBuilder<'a, D> {
-    fn new(dis: &'a mut D) -> Self {
+    fn new(dis: &'a D) -> Self {
         Self {
             dis,
             title: None,
             pos: (None, None),
-            size: (None, None)
+            size: (None, None),
+            screen: None,
+            transparency: false,
         }
     }
 
@@ -54,6 +58,11 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
     pub fn w(mut self, w: u64) -> Self { self.size.0 = Some(w); self }
     /// Sets the window height
     pub fn h(mut self, h: u64) -> Self { self.size.1 = Some(h); self }
+    /// Sets the screen id
+    pub fn screen(mut self, screen: usize) -> Self { self.screen = Some(screen); self }
+
+    /// Set transparency support
+    pub fn transparency(mut self, b: bool) -> Self { self.transparency = b; self }
 
     /// Gets the window title
     pub fn get_title(&self) -> Option<&str> { self.title.as_ref().map(String::as_str) }
@@ -71,9 +80,14 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
     pub fn get_w(&self) -> Option<u64> { self.size.0 }
     /// Gets the window height
     pub fn get_h(&self) -> Option<u64> { self.size.1 }
+    /// Gets the screen id
+    pub fn get_screen(&self) -> Option<usize> { self.screen }
+    
+    /// Get transparency support
+    pub fn get_transparency(&self) -> bool { self.transparency }
 
     /// Gets the display
-    pub fn get_display(self) -> &'a mut D { self.dis }
+    pub fn get_display(self) -> &'a D { self.dis }
 
     /// Tries to build a window by given configuration.
     /// On failiure returns the platform specific error type `Window::Error`.

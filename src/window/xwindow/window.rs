@@ -4,6 +4,19 @@ use super::Display as XDisplay;
 
 pub struct Window<'a> {
     dis: &'a XDisplay,
+    win: xcb::Window,
+    transparency: bool,
+}
+
+impl<'a> Window<'a> {
+    fn create_pixmap(&self, w: u64, h: u64) -> Result<xcb::Pixmap, XError> {
+        let con = self.dis.con();
+        let pix = con.generate_id();
+        let depth = if self.transparency { 24 } else { 32 };
+        xcb::create_pixmap(con, depth, pix, self.win, w as u16, h as u16)
+            .request_check()?;
+        Ok(pix)
+    }
 }
 
 impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
@@ -94,6 +107,7 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
 
         Ok(Self {
             dis,
+            transparency,
         })
     }
 }

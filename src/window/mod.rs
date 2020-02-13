@@ -2,6 +2,10 @@
 
 pub mod xwindow;
 pub mod event;
+pub mod color;
+
+use color::{Color, PixelFormat};
+use core::convert::TryInto;
 
 #[derive(Clone, Copy)]
 pub enum WindowType {
@@ -116,4 +120,68 @@ pub trait Window<'a, D: Display>: Iterator<Item=event::Event> {
     /// Tries to create a new window. Use `WindowBuilder::build` instead
     fn new(wb: WindowBuilder<'a, D>) -> Result<Self, Self::Error>
             where Self: Sized;
+}
+
+pub trait Surface {
+    fn get_width(&self) -> u64;
+    fn get_height(&self) -> u64;
+    fn get_size(&self) -> (u64, u64) {
+        (self.get_width(), self.get_height())
+    }
+    fn get_pixel_format(&self) -> PixelFormat;
+    fn draw();
+}
+
+/// An image stored as an 1D array of colors
+pub struct Image<C: Color> {
+    data: Vec<C>,
+    /// The following are guaranteed to fit into an usize:
+    /// `res.0`, `res.1`, `res.0 * res.1`
+    res: (u64, u64),
+}
+
+fn get_area(width: u64, height: u64) -> Option<usize> {
+    usize::checked_mul(
+        width.try_into().ok()?,
+        height.try_into().ok()?)
+}
+
+impl<C: Color> Image<C> {
+    pub fn new(width: u64, height: u64) -> Option<Self> {
+        let area = get_area(width, height)?;
+        let data = std::iter::repeat_with(Default::default)
+                             .take(area).collect();
+        Some(Self {
+            data,
+            res: (width, height)
+        })
+    }
+
+    pub fn get_pixel_by_offset(&self, off: usize) -> Option<&C> {
+        self.data.get(off)
+    }
+
+    pub fn get_pixel_at(&self, x: u64, y: u64) -> Option<&C> {
+        // the width is guaranteed to fit into an usize by all constructors
+        let width = self.res.0.try_into().unwrap();
+        let off = usize::checked_mul(
+            usize::checked_mul(
+                y.try_into().ok()?,
+                width)?,
+            x.try_into().ok()?)?;
+        self.get_pixel_by_offset(off)
+    }
+}
+
+impl<C: Color> Surface for Image<C> {
+    fn get_width(&self) -> u64 {
+        self.res.0
+    }
+    fn get_height(&self) -> u64 {
+        self.res.1
+    }
+    fn get_pixel_format(&self) -> PixelFormat {
+        C::get_format()
+    }
+    fn draw() {}
 }

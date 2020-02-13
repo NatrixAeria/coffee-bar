@@ -108,6 +108,7 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
         Ok(Self {
             dis,
             transparency,
+            win
         })
     }
 }

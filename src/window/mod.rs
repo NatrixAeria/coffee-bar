@@ -1,8 +1,8 @@
 //! Tools for managing windows platform independently
 
-pub mod xwindow;
-pub mod event;
 pub mod color;
+pub mod event;
+pub mod xwindow;
 
 use color::{Color, PixelFormat};
 use core::convert::TryInto;
@@ -18,11 +18,14 @@ pub trait Display {
     type Error: std::error::Error;
 
     fn new() -> Result<Self, Self::Error>
-        where Self: Sized;
+    where
+        Self: Sized;
 
     /// Creates a new Window Builder
     fn new_window_builder<'a>(&'a self) -> WindowBuilder<'a, Self>
-            where Self: Sized {
+    where
+        Self: Sized,
+    {
         WindowBuilder::new(self)
     }
 
@@ -56,55 +59,107 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
     }
 
     /// Sets the window title
-    pub fn title(mut self, title: String) -> Self { self.title = Some(title); self }
+    pub fn title(mut self, title: String) -> Self {
+        self.title = Some(title);
+        self
+    }
 
     /// Sets the window position
-    pub fn pos(mut self, x: i64, y: i64) -> Self { self.pos = (Some(x), Some(y)); self }
+    pub fn pos(mut self, x: i64, y: i64) -> Self {
+        self.pos = (Some(x), Some(y));
+        self
+    }
     /// Sets the window position's x-coordinate
-    pub fn x(mut self, x: i64) -> Self { self.pos.0 = Some(x); self }
+    pub fn x(mut self, x: i64) -> Self {
+        self.pos.0 = Some(x);
+        self
+    }
     /// Sets the window position's y-coordinate
-    pub fn y(mut self, y: i64) -> Self { self.pos.1 = Some(y); self }
+    pub fn y(mut self, y: i64) -> Self {
+        self.pos.1 = Some(y);
+        self
+    }
 
     /// Sets the window size
-    pub fn size(mut self, w: u64, h: u64) -> Self { self.size = (Some(w), Some(h)); self }
+    pub fn size(mut self, w: u64, h: u64) -> Self {
+        self.size = (Some(w), Some(h));
+        self
+    }
     /// Sets the window width
-    pub fn w(mut self, w: u64) -> Self { self.size.0 = Some(w); self }
+    pub fn w(mut self, w: u64) -> Self {
+        self.size.0 = Some(w);
+        self
+    }
     /// Sets the window height
-    pub fn h(mut self, h: u64) -> Self { self.size.1 = Some(h); self }
+    pub fn h(mut self, h: u64) -> Self {
+        self.size.1 = Some(h);
+        self
+    }
     /// Sets the screen id
-    pub fn screen(mut self, screen: usize) -> Self { self.screen = Some(screen); self }
+    pub fn screen(mut self, screen: usize) -> Self {
+        self.screen = Some(screen);
+        self
+    }
     /// Sets the window type
-    pub fn window_type(mut self, wt: WindowType) -> Self { self.window_type = wt; self }
+    pub fn window_type(mut self, wt: WindowType) -> Self {
+        self.window_type = wt;
+        self
+    }
 
     /// Set transparency support
-    pub fn transparency(mut self, b: bool) -> Self { self.transparency = b; self }
+    pub fn transparency(mut self, b: bool) -> Self {
+        self.transparency = b;
+        self
+    }
 
     /// Gets the window title
-    pub fn get_title(&self) -> Option<&str> { self.title.as_ref().map(String::as_str) }
+    pub fn get_title(&self) -> Option<&str> {
+        self.title.as_ref().map(String::as_str)
+    }
 
     /// Gets the window position
-    pub fn get_pos(&self) -> (Option<i64>, Option<i64>) { self.pos }
+    pub fn get_pos(&self) -> (Option<i64>, Option<i64>) {
+        self.pos
+    }
     /// Gets the window position's x-coordinate
-    pub fn get_x(&self) -> Option<i64> { self.pos.0 }
+    pub fn get_x(&self) -> Option<i64> {
+        self.pos.0
+    }
     /// Gets the window position's y-coordinate
-    pub fn get_y(&self) -> Option<i64> { self.pos.1 }
+    pub fn get_y(&self) -> Option<i64> {
+        self.pos.1
+    }
 
     /// Gets the window size
-    pub fn get_size(&self) -> (Option<u64>, Option<u64>) { self.size }
+    pub fn get_size(&self) -> (Option<u64>, Option<u64>) {
+        self.size
+    }
     /// Gets the window width
-    pub fn get_w(&self) -> Option<u64> { self.size.0 }
+    pub fn get_w(&self) -> Option<u64> {
+        self.size.0
+    }
     /// Gets the window height
-    pub fn get_h(&self) -> Option<u64> { self.size.1 }
+    pub fn get_h(&self) -> Option<u64> {
+        self.size.1
+    }
     /// Gets the screen id
-    pub fn get_screen(&self) -> Option<usize> { self.screen }
+    pub fn get_screen(&self) -> Option<usize> {
+        self.screen
+    }
     /// Gets the window type
-    pub fn get_window_type(&self) -> WindowType { self.window_type }
-    
+    pub fn get_window_type(&self) -> WindowType {
+        self.window_type
+    }
+
     /// Get transparency support
-    pub fn get_transparency(&self) -> bool { self.transparency }
+    pub fn get_transparency(&self) -> bool {
+        self.transparency
+    }
 
     /// Gets the display
-    pub fn get_display(self) -> &'a D { self.dis }
+    pub fn get_display(self) -> &'a D {
+        self.dis
+    }
 
     /// Tries to build a window by given configuration.
     /// On failiure returns the platform specific error type `Window::Error`.
@@ -114,22 +169,13 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
 }
 
 /// A trait for windows of a specific platform
-pub trait Window<'a, D: Display>: Iterator<Item=event::Event> {
+pub trait Window<'a, D: Display>: Iterator<Item = event::Event> {
     /// Platform specific window error type
     type Error: std::error::Error;
     /// Tries to create a new window. Use `WindowBuilder::build` instead
     fn new(wb: WindowBuilder<'a, D>) -> Result<Self, Self::Error>
-            where Self: Sized;
-}
-
-pub trait Surface {
-    fn get_width(&self) -> u64;
-    fn get_height(&self) -> u64;
-    fn get_size(&self) -> (u64, u64) {
-        (self.get_width(), self.get_height())
-    }
-    fn get_pixel_format(&self) -> PixelFormat;
-    fn draw();
+    where
+        Self: Sized;
 }
 
 /// An image stored as an 1D array of colors
@@ -141,19 +187,18 @@ pub struct Image<C: Color> {
 }
 
 fn get_area(width: u64, height: u64) -> Option<usize> {
-    usize::checked_mul(
-        width.try_into().ok()?,
-        height.try_into().ok()?)
+    usize::checked_mul(width.try_into().ok()?, height.try_into().ok()?)
 }
 
 impl<C: Color> Image<C> {
     pub fn new(width: u64, height: u64) -> Option<Self> {
         let area = get_area(width, height)?;
         let data = std::iter::repeat_with(Default::default)
-                             .take(area).collect();
+            .take(area)
+            .collect();
         Some(Self {
             data,
-            res: (width, height)
+            res: (width, height),
         })
     }
 
@@ -165,15 +210,31 @@ impl<C: Color> Image<C> {
         // the width is guaranteed to fit into an usize by all constructors
         let width = self.res.0.try_into().unwrap();
         let off = usize::checked_mul(
-            usize::checked_mul(
-                y.try_into().ok()?,
-                width)?,
-            x.try_into().ok()?)?;
+            usize::checked_mul(y.try_into().ok()?, width)?,
+            x.try_into().ok()?,
+        )?;
         self.get_pixel_by_offset(off)
     }
 }
 
-impl<C: Color> Surface for Image<C> {
+pub trait Draw<'s> {
+    type Error: std::error::Error;
+    fn finish(self) -> Result<(), Self::Error>;
+}
+
+pub trait Surface<'s> {
+    type Draw: Draw<'s>;
+    fn get_width(&self) -> u64;
+    fn get_height(&self) -> u64;
+    fn get_size(&self) -> (u64, u64) {
+        (self.get_width(), self.get_height())
+    }
+    fn get_pixel_format(&self) -> PixelFormat;
+    fn draw(&'s mut self) -> Self::Draw;
+}
+
+impl<'s, C: Color + 'static> Surface<'s> for Image<C> {
+    type Draw = ImageDraw<'s, C>;
     fn get_width(&self) -> u64 {
         self.res.0
     }
@@ -183,5 +244,16 @@ impl<C: Color> Surface for Image<C> {
     fn get_pixel_format(&self) -> PixelFormat {
         C::get_format()
     }
-    fn draw() {}
+    fn draw(&'s mut self) -> Self::Draw {
+        ImageDraw(self)
+    }
+}
+
+pub struct ImageDraw<'s, C: Color>(&'s mut Image<C>);
+
+impl<'s, C: Color> Draw<'s> for ImageDraw<'s, C> {
+    type Error = std::io::Error;
+    fn finish(self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }

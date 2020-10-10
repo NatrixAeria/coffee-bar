@@ -1,11 +1,13 @@
 //! Tools for managing windows platform independently
 
 pub mod color;
+pub mod draw;
 pub mod event;
 pub mod xwindow;
 
 use color::{Color, PixelFormat};
 use core::convert::TryInto;
+use draw::DrawCommand;
 
 #[derive(Clone, Copy)]
 pub enum WindowType {
@@ -169,7 +171,7 @@ impl<'a, D: Display> WindowBuilder<'a, D> {
 }
 
 /// A trait for windows of a specific platform
-pub trait Window<'a, D: Display>: Iterator<Item = event::Event> {
+pub trait Window<'a, D: Display>: Iterator<Item = Result<event::Event, D::Error>> {
     /// Platform specific window error type
     type Error: std::error::Error;
     /// Tries to create a new window. Use `WindowBuilder::build` instead
@@ -217,24 +219,34 @@ impl<C: Color> Image<C> {
     }
 }
 
-pub trait Draw<'s> {
+pub trait Surface<C: Color> {
     type Error: std::error::Error;
-    fn finish(self) -> Result<(), Self::Error>;
-}
-
-pub trait Surface<'s> {
-    type Draw: Draw<'s>;
     fn get_width(&self) -> u64;
     fn get_height(&self) -> u64;
     fn get_size(&self) -> (u64, u64) {
         (self.get_width(), self.get_height())
     }
     fn get_pixel_format(&self) -> PixelFormat;
-    fn draw(&'s mut self) -> Self::Draw;
+    fn draw(&self, draw: DrawCommand<C>) -> Result<(), Self::Error>;
 }
 
-impl<'s, C: Color + 'static> Surface<'s> for Image<C> {
-    type Draw = ImageDraw<'s, C>;
+#[derive(Debug)]
+pub enum ImageDrawError {
+    OutOfBounds(i32, i32),
+}
+
+impl std::fmt::Display for ImageDrawError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::OutOfBounds(x, y) => write!(f, "image draw out of bounds (x: {}, y: {})", x, y),
+        }
+    }
+}
+
+impl std::error::Error for ImageDrawError {}
+
+impl<C: Color + 'static> Surface<C> for Image<C> {
+    type Error = ImageDrawError;
     fn get_width(&self) -> u64 {
         self.res.0
     }
@@ -244,16 +256,9 @@ impl<'s, C: Color + 'static> Surface<'s> for Image<C> {
     fn get_pixel_format(&self) -> PixelFormat {
         C::get_format()
     }
-    fn draw(&'s mut self) -> Self::Draw {
-        ImageDraw(self)
+    fn draw(&self, draw: DrawCommand<C>) -> Result<(), ImageDrawError> {
+        todo!();
     }
 }
 
 pub struct ImageDraw<'s, C: Color>(&'s mut Image<C>);
-
-impl<'s, C: Color> Draw<'s> for ImageDraw<'s, C> {
-    type Error = std::io::Error;
-    fn finish(self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-}

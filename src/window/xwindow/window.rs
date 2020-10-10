@@ -1,20 +1,105 @@
-use super::super::{event::Event, Display, WindowBuilder, WindowType};
+use super::super::{
+    color::{Color, PixelFormat},
+    draw::DrawCommand,
+    event, Display, Surface, WindowBuilder, WindowType,
+};
 use super::Display as XDisplay;
 use super::XError;
 
 pub struct Window<'a> {
     dis: &'a XDisplay,
+    screen: xcb::Screen<'a>,
     win: xcb::Window,
     transparency: bool,
+    size: (u16, u16),
 }
 
 impl<'a> Window<'a> {
-    fn create_pixmap(&self, w: u64, h: u64) -> Result<xcb::Pixmap, XError> {
+    fn create_pixmap(&self, w: u64, h: u64) -> (xcb::VoidCookie, u32) {
         let con = self.dis.con();
         let pix = con.generate_id();
         let depth = if self.transparency { 24 } else { 32 };
-        xcb::create_pixmap(con, depth, pix, self.win, w as u16, h as u16).request_check()?;
-        Ok(pix)
+        (
+            xcb::create_pixmap(con, depth, pix, self.win, w as u16, h as u16),
+            pix,
+        )
+    }
+
+    fn translate_button(button: xcb::Button) -> Option<event::Button> {
+        match button.into() {
+            xcb::BUTTON_INDEX_1 => Some(event::Button::Left),
+            xcb::BUTTON_INDEX_2 => Some(event::Button::Middle),
+            xcb::BUTTON_INDEX_3 => Some(event::Button::Right),
+            xcb::BUTTON_INDEX_4 => Some(event::Button::ScrollUp),
+            xcb::BUTTON_INDEX_5 => Some(event::Button::ScrollDown),
+            6 => Some(event::Button::ScrollLeft),
+            7 => Some(event::Button::ScrollRight),
+            _ => None,
+        }
+    }
+
+    fn create_gc(&mut self) -> (xcb::VoidCookie, u32) {
+        let gc = self.dis.con().generate_id();
+        (
+            xcb::create_gc(
+                self.dis.con(),
+                gc,
+                self.screen.root(),
+                &[(xcb::GC_FOREGROUND, self.screen.black_pixel())],
+            ),
+            gc,
+        )
+    }
+
+    fn translate_button_mask(button: u16) -> Option<event::Button> {
+        let zeros = (button & !0xff).trailing_zeros();
+        if zeros < 8 {
+            None
+        } else {
+            Self::translate_button(zeros as u8 - 7)
+        }
+    }
+
+    fn redraw(&mut self, x: u16, y: u16, w: u16, h: u16) -> Result<(), XError> {
+        println!("redrawing {},{} - {},{}", x, y, w, h);
+        Ok(())
+    }
+
+    pub fn fetch_event(&mut self) -> Option<Result<event::Event, Option<XError>>> {
+        let con = self.dis.con();
+        Some(con.wait_for_event().ok_or(None).and_then(|event| {
+            let r = event.response_type();
+            match r {
+                xcb::EXPOSE => unsafe {
+                    let event: &xcb::ExposeEvent = xcb::cast_event(&event);
+                    Err(self
+                        .redraw(event.x(), event.y(), event.width(), event.height())
+                        .err())
+                },
+                xcb::BUTTON_PRESS => unsafe {
+                    let event: &xcb::ButtonPressEvent = xcb::cast_event(&event);
+                    Self::translate_button(event.detail())
+                        .map(|b| (b, (event.event_x().into(), event.event_y().into())))
+                }
+                .map(|(b, s)| event::Event::ButtonDown(b, s))
+                .ok_or(None),
+                xcb::BUTTON_RELEASE => unsafe {
+                    let event: &xcb::ButtonReleaseEvent = xcb::cast_event(&event);
+                    Self::translate_button(event.detail())
+                        .map(|b| (b, (event.event_x().into(), event.event_y().into())))
+                }
+                .map(|(b, s)| event::Event::ButtonUp(b, s))
+                .ok_or(None),
+                xcb::MOTION_NOTIFY => unsafe {
+                    let event: &xcb::MotionNotifyEvent = xcb::cast_event(&event);
+                    Self::translate_button_mask(event.state())
+                        .map(|b| (b, (event.event_x().into(), event.event_y().into())))
+                }
+                .map(|(b, s)| event::Event::ButtonMove(b, s))
+                .ok_or(None),
+                _ => Err(None),
+            }
+        }))
     }
 }
 
@@ -47,17 +132,6 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
         let mut depth_val = xcb::COPY_FROM_PARENT as u8;
         let mut cw_values = vec![];
 
-        let foreground_gc = con.generate_id();
-        xcb::create_gc(
-            con,
-            foreground_gc,
-            screen.root(),
-            &[
-                (xcb::GC_FOREGROUND, screen.black_pixel()),
-                (xcb::GC_GRAPHICS_EXPOSURES, 0),
-            ],
-        );
-
         if transparency {
             if let Some((depth, vis)) =
                 dis.get_depth(screen_id, 32, xcb::VISUAL_CLASS_TRUE_COLOR as u8)
@@ -86,7 +160,10 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
         cw_values.push((xcb::CW_BACK_PIXEL, screen.black_pixel()));
         cw_values.push((
             xcb::CW_EVENT_MASK,
-            xcb::EVENT_MASK_EXPOSURE | xcb::EVENT_MASK_KEY_PRESS,
+            xcb::EVENT_MASK_EXPOSURE
+                | xcb::EVENT_MASK_BUTTON_PRESS
+                | xcb::EVENT_MASK_BUTTON_RELEASE
+                | xcb::EVENT_MASK_BUTTON_MOTION,
         ));
         xcb::create_window(
             con,
@@ -132,23 +209,51 @@ impl<'a> super::super::Window<'a, XDisplay> for Window<'a> {
 
         Ok(Self {
             dis,
+            screen,
             transparency,
             win,
+            size,
         })
     }
 }
 
+pub struct WindowSurface<'s, 'a> {
+    win: &'s mut Window<'a>,
+}
+
+impl<'s, 'a, C: Color> Surface<C> for WindowSurface<'s, 'a>
+where
+    'a: 's,
+{
+    type Error = XError;
+    fn get_width(&self) -> u64 {
+        self.win.size.0.into()
+    }
+    fn get_height(&self) -> u64 {
+        self.win.size.1.into()
+    }
+    fn get_pixel_format(&self) -> PixelFormat {
+        if self.win.transparency {
+            PixelFormat::Rgba32
+        } else {
+            PixelFormat::Rgb24
+        }
+    }
+    fn draw(&self, draw: DrawCommand<C>) -> Result<(), Self::Error> {
+        todo!();
+    }
+}
+
 impl<'a> Iterator for Window<'a> {
-    type Item = Event;
+    type Item = Result<event::Event, XError>;
     fn next(&mut self) -> Option<Self::Item> {
-        let con = self.dis.con();
-        con.wait_for_event().and_then(|event| {
-            let r = event.response_type() & !0x80;
-            match r {
-                xcb::EXPOSE => Some(Event::Redraw),
-                xcb::KEY_PRESS => Some(Event::KeyDown),
-                _ => None,
-            }
-        })
+        loop {
+            break match self.fetch_event() {
+                Some(Ok(event)) => Some(Ok(event)),
+                Some(Err(Some(err))) => Some(Err(err)),
+                None => None,
+                Some(Err(None)) => continue,
+            };
+        }
     }
 }

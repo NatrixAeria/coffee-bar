@@ -1,9 +1,5 @@
 use super::XError;
 
-pub struct Screen<'a> {
-    screen: xcb::Screen<'a>
-}
-
 pub struct Display {
     main_screen: i32,
     con: xcb::Connection,
@@ -14,19 +10,25 @@ impl Display {
         self.con.get_setup().roots().nth(n)
     }
 
-    pub fn get_depth(&self, screen: usize, depth: u32, class: u8) -> Option<(xcb::Depth, xcb::Visualtype)> {
-        self.get_screen(screen).and_then(|screen|
-            screen.allowed_depths()
-                  .filter(|d| d.depth() as u32 == depth)
-                  .filter_map(|d| d.visuals().find(|v| v.class() == class).map(|v| (d, v)))
-                  .next()
-        )
+    pub fn get_depth(
+        &self,
+        screen: usize,
+        depth: u32,
+        class: u8,
+    ) -> Option<(xcb::Depth, xcb::Visualtype)> {
+        self.get_screen(screen).and_then(|screen| {
+            screen
+                .allowed_depths()
+                .filter(|d| d.depth() as u32 == depth)
+                .filter_map(|d| d.visuals().find(|v| v.class() == class).map(|v| (d, v)))
+                .next()
+        })
     }
 
     pub fn get_intern_atom(&self, name: &str) -> Result<Option<xcb::Atom>, XError> {
         match xcb::intern_atom(&self.con, true, name).get_reply()?.atom() {
             xcb::ATOM_NONE => Ok(None),
-            atom => Ok(Some(atom))
+            atom => Ok(Some(atom)),
         }
     }
 
@@ -50,7 +52,8 @@ impl super::super::Display for Display {
     }
 
     fn get_screen_dimension(&self, n: usize) -> Option<(u64, u64)> {
-        self.get_screen(n).map(|s| (s.width_in_pixels().into(), s.height_in_pixels().into()))
+        self.get_screen(n)
+            .map(|s| (s.width_in_pixels().into(), s.height_in_pixels().into()))
     }
 
     fn get_main_screen(&self) -> usize {

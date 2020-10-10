@@ -1,30 +1,23 @@
 //! A modular i3-bar written in rust
 
+#![feature(const_fn)]
+#![feature(move_ref_pattern)]
+
+mod bar;
+mod error;
 pub mod window;
 
-use window::{Display, WindowType};
+pub use bar::{Bar, X11Bar};
+pub use error::BarError;
+
+fn run_bar() -> Result<(), BarError> {
+    Ok(X11Bar::new()?.main_loop()?)
+}
 
 /// Runs a new coffee-bar instance
-fn main() -> Result<(), String> {
-    let dis = window::xwindow::Display::new().map_err(|e| format!("{}", e))?;
-
-    let size = dis
-        .get_screen_dimension(dis.get_main_screen())
-        .ok_or_else(|| String::from("No screen available"))?;
-
-    let win: window::xwindow::Window = dis
-        .new_window_builder()
-        .title(String::from("coffee bar"))
-        .pos(0, 0)
-        .size(size.0, 40)
-        .transparency(true)
-        .window_type(WindowType::Docking)
-        .build()
-        .map_err(|e| format!("{}", e))?;
-
-    for event in win {
-        println!("event: {:?}", event);
+fn main() {
+    if let Err(err) = run_bar() {
+        eprintln!("error: {}", err);
+        std::process::exit(1)
     }
-
-    Ok(())
 }

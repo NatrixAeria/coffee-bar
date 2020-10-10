@@ -10,7 +10,7 @@ pub enum PixelFormat {
 }
 
 impl PixelFormat {
-    pub fn bits(&self) -> usize {
+    pub const fn bits(&self) -> usize {
         match self {
             PixelFormat::Rgb24 => 24,
             PixelFormat::Rgba32 => 32,
@@ -18,7 +18,7 @@ impl PixelFormat {
         }
     }
 
-    pub fn alpha_bits(&self) -> usize {
+    pub const fn alpha_bits(&self) -> usize {
         match self {
             PixelFormat::Rgb24 => 0,
             PixelFormat::Rgba32 => 8,
@@ -26,18 +26,15 @@ impl PixelFormat {
         }
     }
 
-    pub fn has_alpha(&self) -> bool {
+    pub const fn has_alpha(&self) -> bool {
         match self {
-            PixelFormat::Rgb24
-                => false,
-            PixelFormat::Rgba32 |
-            PixelFormat::Argb32
-                => true
+            PixelFormat::Rgb24 => false,
+            PixelFormat::Rgba32 | PixelFormat::Argb32 => true,
         }
     }
 }
 
-pub trait Color: Sized + Default {
+pub trait Color: Clone + Sized + Default {
     fn get_format() -> PixelFormat;
     fn r8(&self) -> u8;
     fn g8(&self) -> u8;
@@ -47,7 +44,7 @@ pub trait Color: Sized + Default {
         ColorRgb24 {
             r: self.r8(),
             g: self.g8(),
-            b: self.b8()
+            b: self.b8(),
         }
     }
     fn as_rgba32(self) -> ColorRgba32 {
@@ -55,7 +52,7 @@ pub trait Color: Sized + Default {
             r: self.r8(),
             g: self.g8(),
             b: self.b8(),
-            a: self.a8()
+            a: self.a8(),
         }
     }
 }
@@ -70,7 +67,7 @@ pub struct ColorRgba32 {
     /// blue channel
     pub b: u8,
     /// alpha channel
-    pub a: u8
+    pub a: u8,
 }
 
 impl Color for ColorRgba32 {
@@ -99,7 +96,7 @@ pub struct ColorRgb24 {
     /// green channel
     pub g: u8,
     /// blue channel
-    pub b: u8
+    pub b: u8,
 }
 
 impl Color for ColorRgb24 {
